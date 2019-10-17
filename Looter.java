@@ -1,7 +1,12 @@
-package bot;
+package bot.Looter;
 
+import com.runemate.game.api.hybrid.entities.GameObject;
+import com.runemate.game.api.hybrid.entities.GroundItem;
+import com.runemate.game.api.hybrid.entities.Npc;
 import com.runemate.game.api.hybrid.local.hud.interfaces.Bank;
 import com.runemate.game.api.hybrid.local.hud.interfaces.Inventory;
+import com.runemate.game.api.hybrid.local.hud.interfaces.SpriteItem;
+import com.runemate.game.api.hybrid.location.Area;
 import com.runemate.game.api.hybrid.location.navigation.basic.BresenhamPath;
 import com.runemate.game.api.hybrid.region.GameObjects;
 import com.runemate.game.api.hybrid.region.GroundItems;
@@ -18,150 +23,131 @@ public class Looter extends LoopingBot {
     boolean clickOnDitch=false;
     boolean travelToZafeZone=false;
 
+
+    LooterAreas areas= new LooterAreas();
+    LooterApi api= new LooterApi();
+
     private enum State
     {
         LOOT
     }
+
 
     @Override
     public void onLoop() {
         switch (getCurrentState()) {
             case LOOT:
 
-        LooterAreas areas= new LooterAreas();
-        LooterApi api= new LooterApi();
-        try {
-                    if (Inventory.isEmpty() && !areas.area.contains(Players.getLocal())) {
-                        gotoCenter=true;
 
+                    if (Inventory.isEmpty() && !areas.getArea().contains(Players.getLocal())) {
+                        gotoCenter=true;
                      }
-                } catch (NullPointerException e) {
-                    System.out.println("Excepcion in taking arrow");
-                }
-                try{
-                    if(Inventory.isEmpty() && areas.area.contains(Players.getLocal())){
+
+                    if(Inventory.isEmpty() && areas.getArea().contains(Players.getLocal())){
                        api.pickUpArrows();
                     }
 
-                }catch (NullPointerException e){
+                    SpriteItem  addy=Inventory.getItems("Adamant arrow").first();
+                    if(addy!=null) {
+                        if ((addy.getQuantity() < adamantArrow) || Inventory.isEmpty()) {
 
-                }
-                try {
+                            if (Players.getLocal().getHealthGauge() == null && !Players.getLocal().isMoving()) {
+                                api.pickUpArrows();
+                                travelToZafeZone = true;
+                                System.out.println("Grabbing arrows");
+                            }
 
-                    if  ((Inventory.getItems("Adamant arrow").first().getQuantity() < adamantArrow) || Inventory.isEmpty()) {
-
-                        if (Players.getLocal().getHealthGauge() == null && !Players.getLocal().isMoving()) {
-                           api.pickUpArrows();
-                            travelToZafeZone=true;
-                            System.out.println("Grabbing arrows");
                         }
-
-                    }
-                } catch(NullPointerException e){
-                        System.out.println("Nuller Eccce");
                     }
 
                 if(gotoCenter){
                     gotoCenter = false;
-                  api.travelTo(areas.area);
+                    api.travelTo(areas.getArea());
                 }
-                try {
-                    if ( GroundItems.newQuery().names("Adamant arrow").results().nearest().distanceTo(Players.getLocal())>6&&Players.getLocal().getHealthGauge()==null &&!areas.area.contains(Players.getLocal())&& Inventory.getItems("Adamant arrow").first().getQuantity()<adamantArrow) {
 
-                            api.travelTo(areas.area);
-                        }} catch (NullPointerException e) {
+                    GroundItem adamantArrowsFloor=GroundItems.newQuery().names("Adamant arrow").results().nearest();
+                    SpriteItem  addy1=Inventory.getItems("Adamant arrow").first();
+                   if(addy1!=null){
+                    if (adamantArrowsFloor.distanceTo(Players.getLocal())>6&&Players.getLocal().getHealthGauge()==null &&!areas.getArea().contains(Players.getLocal())&& addy1.getQuantity()<adamantArrow) {
 
+                            api.travelTo(areas.getArea());
                         }
-
+                   }
                     System.out.println("Stuck");
                     if (Players.getLocal().getHealthGauge() != null) {
                         try {
-                         api.travelTo(areas.safeArea);
+                         api.travelTo(areas.getSafeArea());
                         } catch (NullPointerException e) {
                             System.out.println("Excepcion on running");
                         }
                     }
-                    try {
-                        if (areas.safeArea.contains(Players.getLocal()) && Players.getLocal().getHealthGauge().getPercent() < 50) {
-                            Execution.delay(40000, 60000);
-                        }
-                    }catch (NullPointerException e){
 
-                    }
-                    try {
-                        if ( travelToZafeZone && !areas.safeArea.contains(Players.getLocal()) && Inventory.getItems("Adamant arrow").first().getQuantity() >= adamantArrow) {
-                            api.travelTo(areas.safeArea);
-                            if(areas.BesideTheDitch.contains(Players.getLocal())){
-                                travelToZafeZone=false;
+                        if(Players.getLocal().getHealthGauge()!=null) {
+                            if (areas.getSafeArea().contains(Players.getLocal()) && Players.getLocal().getHealthGauge().getPercent() < 50) {
+                                Execution.delay(40000, 60000);
                             }
                         }
-                    }catch (NullPointerException e){
 
-                    }
-                    if(areas.BesideTheDitch.contains(Players.getLocal())|| areas.bankArea.contains(Players.getLocal())){
+                        if(Inventory.getItems("Adamant arrow").first()!=null){
+                        if ( travelToZafeZone && !areas.getSafeArea().contains(Players.getLocal()) && Inventory.getItems("Adamant arrow").first().getQuantity() >= adamantArrow) {
+                            api.travelTo(areas.getSafeArea());
+                            if(areas.getBesideTheDitch().contains(Players.getLocal())){
+                                travelToZafeZone=false;
+                            }
+                        }}
+
+                    if(areas.getBesideTheDitch().contains(Players.getLocal())|| areas.getBankArea().contains(Players.getLocal())){
                         travelToZafeZone=false;
                     }
-                    try {
-
-                        if (GameObjects.newQuery().names("Wilderness Ditch").results() != null && areas.safeArea.contains(Players.getLocal()) && Inventory.getItems("Adamant arrow").first().getQuantity() >= adamantArrow) {
-                           clickOnDitch=true;
+                        GameObject wildernessDitch=GameObjects.newQuery().names("Wilderness Ditch").results().nearest();
+                        if (wildernessDitch != null && areas.getSafeArea().contains(Players.getLocal()) && Inventory.getItems("Adamant arrow").first().getQuantity() >= adamantArrow) {
+                            clickOnDitch=true;
                            travelToZafeZone=false;
-                            if (Players.getLocal().getAnimationId() == -1 && !areas.bankArea.isReachable() && clickOnDitch) {
-                                GameObjects.newQuery().names("Wilderness Ditch").results().nearest().interact("Cross");
+
+                            if (Players.getLocal().getAnimationId() == -1 && !areas.getBankArea().isReachable() && clickOnDitch) {
+                              wildernessDitch.interact("Cross");
                                 Execution.delay(1000, 1500);
                                 clickOnDitch=false;
                                 System.out.println("clicking wilderness ditch");
                             }
                         }
-                    }catch (NullPointerException e){
-                        System.out.println("Click wilderness ditch to go to bank excepcion");
-                    }
-                    try {
-                        if ( Npcs.newQuery().names("Banker").results().isEmpty() && areas.bankArea.isReachable() && Inventory.getItems("Adamant arrow").first().getQuantity() >= adamantArrow) {
-                         api.travelTo(areas.bankArea);
-                        }
-                    }catch(NullPointerException e){
-                        System.out.println("Going to safe zone error");
-                    }
-                    try {
-                        if (!areas.bankArea.contains(Players.getLocal())&&!Inventory.isEmpty() && !Npcs.newQuery().names("Banker").results().isEmpty() && !Players.getLocal().isMoving()) {
 
-                            BresenhamPath pathtobank = BresenhamPath.buildTo(Npcs.newQuery().names("Banker").results().nearest());
-                            pathtobank.step(true);
-                        }
-                        if(!Inventory.isEmpty()) {
-                            Npcs.newQuery().names("Banker").results().nearest().interact("Bank");
-                            Execution.delay(1000, 2000);
-
-
-                            Bank.depositAllExcept(0);
-                            clickOnDitch = true;
+                        if ( Npcs.newQuery().names("Banker").results().isEmpty() && areas.getBankArea().isReachable() && Inventory.getItems("Adamant arrow").first().getQuantity() >= adamantArrow) {
+                         api.travelTo(areas.getBankArea());
                         }
 
-                    }catch(NullPointerException e){
-                        System.out.println("Clicking banker error");
+                    Npc bank = Npcs.newQuery().names("Banker").results().nearest();
+                       if(bank!=null) {
+                           if (!areas.getBankArea().contains(Players.getLocal()) && !Inventory.isEmpty() && !Npcs.newQuery().names("Banker").results().isEmpty() && !Players.getLocal().isMoving()) {
+                               BresenhamPath pathtobank = BresenhamPath.buildTo(bank);
+                               pathtobank.step(true);
+                           }
+                           if (!Inventory.isEmpty()) {
+                               bank.interact("Bank");
+                               Execution.delay(1000, 2000);
+                               Bank.depositAllExcept(0);
+                               clickOnDitch = true;
+                           }
+                       }
+
+                    if( Inventory.isEmpty() && !areas.getBesideTheDitch().contains(Players.getLocal()) && !areas.getArea().isReachable() ) {
+                       api.travelTo(areas.getBesideTheDitch());
                     }
 
-
-                    if( Inventory.isEmpty() && !areas.BesideTheDitch.contains(Players.getLocal()) && !areas.area.isReachable() ) {
-                       api.travelTo(areas.BesideTheDitch);
-                    }
-
-                if(Inventory.isEmpty() && areas.BesideTheDitch.contains(Players.getLocal())){
+                if(Inventory.isEmpty() && areas.getBesideTheDitch().contains(Players.getLocal())){
                     clickOnDitch=true;
                 }
 
-                try {
-                    if (clickOnDitch && Inventory.isEmpty() && !areas.safeArea.contains(Players.getLocal())) {
-                        GameObjects.newQuery().names("Wilderness Ditch").results().nearest().interact("Cross");
-                        Execution.delay(2000, 3000);
+                    GameObject wildernessDitch2=GameObjects.newQuery().names("Wilderness Ditch").results().nearest();
+                    if (clickOnDitch && Inventory.isEmpty() && !areas.getSafeArea().contains(Players.getLocal())) {
+                        if(wildernessDitch2 !=null) {
+                            wildernessDitch2.interact("Cross");
+                            Execution.delay(2000, 3000);
+                        }
                     }
-                }catch (NullPointerException e){
-
-                }
-                if(Inventory.isEmpty() && areas.safeArea.contains(Players.getLocal())){
+                if(Inventory.isEmpty() && areas.getSafeArea().contains(Players.getLocal())){
                     clickOnDitch=false;
-                    api.travelTo(areas.area);
+                    api.travelTo(areas.getArea());
                 }
                 break;
 
